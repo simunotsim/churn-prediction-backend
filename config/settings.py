@@ -40,13 +40,22 @@ def get_project_root():
 PROJECT_ROOT = get_project_root()
 BASE_DIR = Path(__file__).resolve().parent.parent  # backend folder
 
-# Model paths - from separate models repo/folder
-MODELS_PATH = Path(os.getenv("MODELS_PATH", PROJECT_ROOT / "models"))
+# Model paths - resolve relative paths from backend folder
+_models_path = os.getenv("MODELS_PATH", "../models")
+if not Path(_models_path).is_absolute():
+    MODELS_PATH = (BASE_DIR / _models_path).resolve()
+else:
+    MODELS_PATH = Path(_models_path)
 
-# Data paths
-DATA_PATH = Path(os.getenv("DATA_PATH", PROJECT_ROOT / "data"))
-RAW_DATA_DIR = DATA_PATH / "raw"
-PROCESSED_DATA_DIR = DATA_PATH / "processed"
+# Data paths - resolve relative paths from backend folder
+_data_path = os.getenv("DATA_PATH", "../data/processed")
+if not Path(_data_path).is_absolute():
+    DATA_PATH = (BASE_DIR / _data_path).resolve()
+else:
+    DATA_PATH = Path(_data_path)
+
+RAW_DATA_DIR = DATA_PATH.parent / "raw" if "processed" in str(DATA_PATH) else DATA_PATH / "raw"
+PROCESSED_DATA_DIR = DATA_PATH if "processed" in str(DATA_PATH) else DATA_PATH / "processed"
 
 # =============================================================================
 # FILE NAMES (Override with environment variables)
