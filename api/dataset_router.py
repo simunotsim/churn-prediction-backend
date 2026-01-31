@@ -125,6 +125,73 @@ def load_model_artifacts():
     return get_model_artifacts()
 
 
+def generate_heuristic_predictions(df: pd.DataFrame) -> np.ndarray:
+    """
+    Generate deterministic predictions based on data features.
+    Used as fallback when model is unavailable - always produces same results for same data.
+    """
+    predictions = np.zeros(len(df))
+    
+    for i, row in df.iterrows():
+        score = 0.3  # Base churn probability
+        
+        # Contract type (most important factor)
+        if 'Contract' in df.columns:
+            contract = str(row.get('Contract', '')).lower()
+            if 'month' in contract:
+                score += 0.25
+            elif 'one year' in contract or 'one-year' in contract:
+                score += 0.1
+            # Two-year contracts have lowest churn
+        
+        # Tenure (longer tenure = lower churn)
+        if 'Tenure' in df.columns or 'tenure' in df.columns:
+            tenure = row.get('Tenure', row.get('tenure', 12))
+            if pd.notna(tenure):
+                tenure = float(tenure)
+                if tenure < 6:
+                    score += 0.2
+                elif tenure < 12:
+                    score += 0.1
+                elif tenure > 36:
+                    score -= 0.15
+        
+        # Monthly charges (higher = more likely to churn)
+        if 'MonthlyCharges' in df.columns:
+            charges = row.get('MonthlyCharges', 50)
+            if pd.notna(charges):
+                charges = float(charges)
+                if charges > 80:
+                    score += 0.15
+                elif charges > 60:
+                    score += 0.05
+        
+        # Internet service type
+        if 'InternetService' in df.columns:
+            internet = str(row.get('InternetService', '')).lower()
+            if 'fiber' in internet:
+                score += 0.1
+            elif 'no' in internet:
+                score -= 0.1
+        
+        # Tech support
+        if 'TechSupport' in df.columns:
+            tech = str(row.get('TechSupport', '')).lower()
+            if 'no' in tech:
+                score += 0.1
+        
+        # Online security
+        if 'OnlineSecurity' in df.columns:
+            security = str(row.get('OnlineSecurity', '')).lower()
+            if 'no' in security:
+                score += 0.08
+        
+        # Clamp to valid probability range
+        predictions[i] = max(0.05, min(0.95, score))
+    
+    return predictions
+
+
 def preprocess_data(df: pd.DataFrame, scaler, encoders) -> pd.DataFrame:
     """Preprocess uploaded data for prediction"""
     df_processed = df.copy()
@@ -319,16 +386,17 @@ async def upload_dataset(
     model, scaler, encoders = load_model_artifacts()
     
     if model is None:
-        # Fallback: generate random predictions for demo
-        predictions = np.random.uniform(0, 1, len(df))
+        # Fallback: generate deterministic predictions based on data features
+        # Use hash of customer data for consistent results
+        predictions = generate_heuristic_predictions(df)
     else:
         try:
             # Preprocess and predict
             df_processed = preprocess_data(df, scaler, encoders)
             predictions = model.predict_proba(df_processed)[:, 1]
         except Exception as e:
-            # Fallback to heuristic predictions
-            predictions = np.random.uniform(0.2, 0.8, len(df))
+            # Fallback to heuristic predictions (deterministic)
+            predictions = generate_heuristic_predictions(df)
     
     # Analyze dataset
     analysis = analyze_dataset(df, predictions)
