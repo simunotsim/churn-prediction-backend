@@ -39,11 +39,25 @@ except ImportError:
     MODEL_COMPARISON_FILE = "model_comparison.csv"
     print_config = lambda: None
 
+# Import database
+try:
+    from database.models import init_db
+except ImportError:
+    init_db = lambda: None
+
+# Import routers
+try:
+    from api.auth_router import router as auth_router
+    from api.dataset_router import router as dataset_router
+except ImportError:
+    auth_router = None
+    dataset_router = None
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Customer Churn Prediction API",
     description="API for predicting customer churn, explaining predictions, and generating retention strategies",
-    version="1.0.0",
+    version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc"
 )
@@ -56,6 +70,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+if auth_router:
+    app.include_router(auth_router)
+if dataset_router:
+    app.include_router(dataset_router)
 
 # Use config paths (no hardcoded local paths)
 DATA_PATH = PROCESSED_DATA_DIR
@@ -167,10 +187,14 @@ class ModelMetrics(BaseModel):
 
 @app.on_event("startup")
 async def load_models():
-    """Load ML models and data on startup"""
+    """Load ML models, data, and initialize database on startup"""
     global model, scaler, label_encoders, customers_df, retention_df
     
     try:
+        # Initialize database tables
+        init_db()
+        print("[OK] Database initialized!")
+        
         # Print config on startup for debugging
         print_config()
         
@@ -187,9 +211,9 @@ async def load_models():
         if retention_path.exists():
             retention_df = pd.read_csv(retention_path)
             
-        print("✅ Models and data loaded successfully!")
+        print("[OK] Models and data loaded successfully!")
     except Exception as e:
-        print(f"⚠️ Error loading models: {e}")
+        print(f"[WARNING] Error loading models: {e}")
 
 
 # ============================================================================
@@ -689,4 +713,4 @@ def generate_recommendations(row: pd.Series) -> List[str]:
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=False)

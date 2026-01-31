@@ -122,7 +122,7 @@ def get_data_path(filename: str) -> Path:
 def print_config():
     """Print current configuration for debugging"""
     print("=" * 60)
-    print("🔧 CONFIGURATION")
+    print("CONFIGURATION")
     print("=" * 60)
     print(f"   PROJECT_ROOT: {PROJECT_ROOT}")
     print(f"   MODELS_PATH: {MODELS_PATH}")
