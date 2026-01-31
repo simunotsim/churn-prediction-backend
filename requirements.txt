@@ -7,6 +7,9 @@ uvicorn[standard]>=0.24.0
 pydantic>=2.0.0
 python-multipart>=0.0.6
 
+# Environment Configuration
+python-dotenv>=1.0.0
+
 # Data Processing
 pandas>=2.0.0
 numpy>=1.24.0

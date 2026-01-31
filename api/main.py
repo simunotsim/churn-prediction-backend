@@ -3,6 +3,8 @@ Customer Churn Prediction API
 FastAPI backend for churn prediction, explainability, and retention strategies
 """
 
+import os
+import sys
 from fastapi import FastAPI, HTTPException, UploadFile, File, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -13,6 +15,30 @@ import joblib
 from pathlib import Path
 import io
 
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+# Import settings from config
+try:
+    from config.settings import (
+        MODELS_PATH, PROCESSED_DATA_DIR, ALLOWED_ORIGINS,
+        MODEL_FILE, SCALER_FILE, ENCODERS_FILE,
+        PREDICTIONS_FILE, RETENTION_FILE, MODEL_COMPARISON_FILE,
+        print_config
+    )
+except ImportError:
+    # Fallback if config not found - use relative paths
+    MODELS_PATH = Path(__file__).parent.parent.parent / "models"
+    PROCESSED_DATA_DIR = Path(__file__).parent.parent.parent / "data" / "processed"
+    ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:5173", "http://localhost:8501"]
+    MODEL_FILE = "xgb_tuned_model.pkl"
+    SCALER_FILE = "scaler.pkl"
+    ENCODERS_FILE = "label_encoders.pkl"
+    PREDICTIONS_FILE = "customer_predictions.csv"
+    RETENTION_FILE = "retention_actions.csv"
+    MODEL_COMPARISON_FILE = "model_comparison.csv"
+    print_config = lambda: None
+
 # Initialize FastAPI app
 app = FastAPI(
     title="Customer Churn Prediction API",
@@ -22,19 +48,17 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS middleware for React frontend
+# CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load model artifacts
-BASE_PATH = Path(__file__).parent.parent.parent
-MODELS_PATH = BASE_PATH / "models"
-DATA_PATH = BASE_PATH / "data" / "processed"
+# Use config paths (no hardcoded local paths)
+DATA_PATH = PROCESSED_DATA_DIR
 
 # Global model objects (loaded on startup)
 model = None
@@ -147,16 +171,21 @@ async def load_models():
     global model, scaler, label_encoders, customers_df, retention_df
     
     try:
-        model = joblib.load(MODELS_PATH / "xgb_tuned_model.pkl")
-        scaler = joblib.load(MODELS_PATH / "scaler.pkl")
-        label_encoders = joblib.load(MODELS_PATH / "label_encoders.pkl")
+        # Print config on startup for debugging
+        print_config()
+        
+        model = joblib.load(Path(MODELS_PATH) / MODEL_FILE)
+        scaler = joblib.load(Path(MODELS_PATH) / SCALER_FILE)
+        label_encoders = joblib.load(Path(MODELS_PATH) / ENCODERS_FILE)
         
         # Load pre-computed predictions
-        if (DATA_PATH / "customer_predictions.csv").exists():
-            customers_df = pd.read_csv(DATA_PATH / "customer_predictions.csv")
+        predictions_path = Path(DATA_PATH) / PREDICTIONS_FILE
+        if predictions_path.exists():
+            customers_df = pd.read_csv(predictions_path)
         
-        if (DATA_PATH / "retention_actions.csv").exists():
-            retention_df = pd.read_csv(DATA_PATH / "retention_actions.csv")
+        retention_path = Path(DATA_PATH) / RETENTION_FILE
+        if retention_path.exists():
+            retention_df = pd.read_csv(retention_path)
             
         print("✅ Models and data loaded successfully!")
     except Exception as e:
