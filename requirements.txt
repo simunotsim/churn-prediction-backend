@@ -17,6 +17,7 @@ bcrypt>=4.0.0
 
 # Database
 sqlalchemy>=2.0.0
+pymysql>=1.1.0  # MySQL driver for MySQL Workbench
 
 # Data Processing
 pandas>=2.0.0

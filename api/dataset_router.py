@@ -15,6 +15,9 @@ import io
 import sys
 from pathlib import Path
 
+# Set random seeds for reproducibility - predictions will be consistent
+np.random.seed(42)
+
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -32,6 +35,31 @@ except ImportError:
     ENCODERS_FILE = "label_encoders.pkl"
 
 router = APIRouter(prefix="/datasets", tags=["Datasets"])
+
+# =============================================================================
+# GLOBAL MODEL LOADING - Load once, reuse for consistent predictions
+# =============================================================================
+
+_model = None
+_scaler = None
+_encoders = None
+
+def get_model_artifacts():
+    """Get cached model artifacts - ensures same model used every time"""
+    global _model, _scaler, _encoders
+    
+    if _model is None:
+        try:
+            model_path = Path(MODELS_PATH)
+            _model = joblib.load(model_path / MODEL_FILE)
+            _scaler = joblib.load(model_path / SCALER_FILE)
+            _encoders = joblib.load(model_path / ENCODERS_FILE)
+            print("[OK] Model artifacts loaded for dataset router")
+        except Exception as e:
+            print(f"[WARNING] Error loading model: {e}")
+            return None, None, None
+    
+    return _model, _scaler, _encoders
 
 
 # =============================================================================
@@ -93,16 +121,8 @@ class ComparisonRequest(BaseModel):
 # =============================================================================
 
 def load_model_artifacts():
-    """Load ML model, scaler, and encoders"""
-    try:
-        model_path = Path(MODELS_PATH)
-        model = joblib.load(model_path / MODEL_FILE)
-        scaler = joblib.load(model_path / SCALER_FILE)
-        encoders = joblib.load(model_path / ENCODERS_FILE)
-        return model, scaler, encoders
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        return None, None, None
+    """Load ML model, scaler, and encoders - uses cached global instances"""
+    return get_model_artifacts()
 
 
 def preprocess_data(df: pd.DataFrame, scaler, encoders) -> pd.DataFrame:

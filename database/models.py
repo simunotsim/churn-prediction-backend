@@ -1,6 +1,7 @@
 """
 Database Models for Churn Prediction Application
 SQLAlchemy models for users, datasets, and analysis results
+Connects to MySQL (AWS RDS via MySQL Workbench)
 """
 
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, ForeignKey, Boolean, JSON
@@ -10,16 +11,31 @@ from datetime import datetime
 import os
 from pathlib import Path
 
-# Database URL - SQLite for development, can switch to PostgreSQL
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./churn_prediction.db")
+# =============================================================================
+# DATABASE CONFIGURATION - MySQL (AWS RDS)
+# =============================================================================
 
-# Create engine
-if DATABASE_URL.startswith("sqlite"):
-    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Get database URL from environment (REQUIRED)
+# Format: mysql+pymysql://user:password@rds-endpoint:3306/database_name
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Check if database is configured
+if DATABASE_URL:
+    # MySQL with connection pooling for RDS
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,  # Check connection before use
+        pool_recycle=300     # Recycle connections every 5 minutes
+    )
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 else:
-    engine = create_engine(DATABASE_URL)
+    # No database configured - will be set up later with RDS
+    engine = None
+    SessionLocal = None
+    print("[INFO] DATABASE_URL not set. Configure AWS RDS connection in .env file.")
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
@@ -123,13 +139,22 @@ class DatasetComparison(Base):
 # =============================================================================
 
 def init_db():
-    """Create all tables"""
+    """Create all tables in MySQL database"""
+    if engine is None:
+        print("[WARNING] Database not configured. Set DATABASE_URL in .env")
+        print("         Format: mysql+pymysql://user:password@rds-endpoint:3306/database")
+        return False
+    
     Base.metadata.create_all(bind=engine)
-    print(" Database tables created successfully!")
+    print("[OK] Database tables created successfully!")
+    return True
 
 
 def get_db():
     """Get database session"""
+    if SessionLocal is None:
+        raise Exception("Database not configured. Set DATABASE_URL environment variable.")
+    
     db = SessionLocal()
     try:
         yield db
