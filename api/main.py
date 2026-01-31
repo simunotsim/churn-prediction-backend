@@ -63,10 +63,12 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend
+# Use ["*"] for all origins in development, specific origins in production
+cors_origins = ["*"] if "*" in ALLOWED_ORIGINS else ALLOWED_ORIGINS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=True if cors_origins != ["*"] else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

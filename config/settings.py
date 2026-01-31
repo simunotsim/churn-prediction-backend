@@ -68,10 +68,14 @@ API_PORT = int(os.getenv("API_PORT", "8000"))
 DEBUG = os.getenv("DEBUG", "true").lower() == "true"
 
 # CORS - allowed origins (comma-separated in env var)
+# Use "*" to allow all origins in development
 ALLOWED_ORIGINS = os.getenv(
     "ALLOWED_ORIGINS", 
-    "http://localhost:3000,http://localhost:5173,http://localhost:8501"
+    "*"
 ).split(",")
+
+# Strip whitespace from origins
+ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS]
 
 # =============================================================================
 # MODEL PARAMETERS

@@ -10,7 +10,7 @@ FastAPI backend for customer churn prediction with user authentication, dynamic 
 - 🤖 **ML Predictions** - XGBoost model with 84.5% ROC-AUC accuracy
 - 💡 **SHAP Explainability** - Understand why customers churn
 - 🎯 **Retention Strategies** - Automated recommendations per customer
-- 💾 **SQLite Database** - Persistent storage for users and datasets
+- 💾 **MySQL Database** - AWS RDS via MySQL Workbench for cross-environment access
 
 ## 🚀 Quick Start
 
@@ -184,7 +184,18 @@ backend/
 | `API_HOST` | `0.0.0.0` | Server host |
 | `API_PORT` | `8000` | Server port |
 | `SECRET_KEY` | (generated) | JWT signing key |
-| `DATABASE_URL` | `sqlite:///./churn_prediction.db` | Database connection |
+| `DATABASE_URL` | (required) | MySQL AWS RDS connection |
+| `ALLOWED_ORIGINS` | `*` | CORS allowed origins |
+
+### Database Setup (AWS RDS MySQL)
+
+1. Create AWS RDS MySQL instance
+2. Connect via MySQL Workbench
+3. Run `database/schema.sql` to create tables
+4. Set `DATABASE_URL` in `.env`:
+   ```
+   DATABASE_URL=mysql+pymysql://user:pass@rds-endpoint:3306/churn_prediction
+   ```
 
 ## 🔒 Authentication Flow
 
