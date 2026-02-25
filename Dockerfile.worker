@@ -1,0 +1,99 @@
+# ============================================================================
+# Production Dockerfile for ML Worker (Heavy)
+# Contains all ML dependencies for inference
+# Expected size: ~600-700MB
+# ============================================================================
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy ALL requirements files
+COPY requirements-worker.txt requirements-api.txt ./
+
+# Install ALL dependencies in a SINGLE command to avoid duplicate transitive deps
+# (layered installs with --prefix cause numpy/scipy to be installed multiple times)
+RUN pip install --no-cache-dir -r requirements-worker.txt && \
+    # ── Remove NVIDIA CUDA packages pulled by xgboost (CPU inference only) ──
+    pip uninstall -y nvidia-nccl-cu12 nvidia-cuda-runtime-cu12 \
+        nvidia-cuda-nvrtc-cu12 nvidia-cublas-cu12 nvidia-cuda-cupti-cu12 \
+        nvidia-curand-cu12 nvidia-cusolver-cu12 nvidia-cusparse-cu12 \
+        nvidia-cufft-cu12 nvidia-cudnn-cu12 nvidia-nvjitlink-cu12 \
+        nvidia-nvtx-cu12 2>/dev/null || true && \
+    rm -rf /usr/local/lib/python3.11/site-packages/nvidia 2>/dev/null || true && \
+    # ── Remove pip / setuptools / wheel (not needed at runtime) ──
+    pip uninstall -y pip setuptools wheel 2>/dev/null || true && \
+    rm -rf /usr/local/lib/python3.11/site-packages/pip \
+           /usr/local/lib/python3.11/site-packages/setuptools \
+           /usr/local/lib/python3.11/site-packages/wheel \
+           /usr/local/lib/python3.11/site-packages/pkg_resources 2>/dev/null || true
+
+# Aggressive cleanup – operates on the default site-packages location
+RUN SITE=/usr/local/lib/python3.11/site-packages && \
+    # Remove test suites & examples
+    find $SITE -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "tests"       -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "test"        -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "testing"     -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "examples"    -exec rm -rf {} + 2>/dev/null || true && \
+    # Remove source / header files left by compiled packages
+    find $SITE -name "*.pyc"  -delete 2>/dev/null || true && \
+    find $SITE -name "*.pyo"  -delete 2>/dev/null || true && \
+    find $SITE -name "*.c"    -delete 2>/dev/null || true && \
+    find $SITE -name "*.cpp"  -delete 2>/dev/null || true && \
+    find $SITE -name "*.h"    -delete 2>/dev/null || true && \
+    find $SITE -name "*.pyx"  -delete 2>/dev/null || true && \
+    # Strip debug symbols from shared objects
+    find $SITE -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true && \
+    # Remove scipy / sklearn test data that ships with the package
+    rm -rf $SITE/scipy/*/tests $SITE/scipy/*/*/tests 2>/dev/null || true && \
+    rm -rf $SITE/sklearn/datasets/data  $SITE/sklearn/datasets/descr 2>/dev/null || true && \
+    rm -rf $SITE/sklearn/datasets/images 2>/dev/null || true && \
+    # Remove unnecessary metadata files from dist-info dirs
+    find $SITE -path "*.dist-info/RECORD"   -delete 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/WHEEL"    -delete 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/LICENSE*"  -delete 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/NOTICE*"   -delete 2>/dev/null || true && \
+    # Remove pip, setuptools, wheel – not needed at runtime
+    pip uninstall -y pip setuptools wheel 2>/dev/null || true
+
+# ============================================================
+# Stage 2: Runtime (minimal)
+# ============================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Runtime dependencies for ML packages (libgomp needed by xgboost)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copy ONLY site-packages and scripts from builder (no pip/setuptools)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin/celery    /usr/local/bin/celery
+COPY --from=builder /usr/local/bin/uvicorn   /usr/local/bin/uvicorn
+
+# Copy application code
+COPY app/ ./app/
+COPY worker/ ./worker/
+
+# Create directories (models & data mounted as volumes)
+RUN mkdir -p /app/data/processed /app/models /app/logs
+
+# Run Celery worker
+CMD ["celery", "-A", "worker.celery_app", "worker", "--loglevel=info", "--concurrency=2"]

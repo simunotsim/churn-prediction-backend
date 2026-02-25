@@ -1,0 +1,73 @@
+# ============================================================================
+# Production Dockerfile for API (Lightweight)
+# Multi-stage build - API ONLY, no ML dependencies
+# Expected size: ~180-220MB
+# ============================================================================
+
+FROM python:3.11-slim AS builder
+
+WORKDIR /build
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Install minimal build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy API-only requirements
+COPY requirements-api.txt .
+
+# Install API dependencies to default location (single command – no duplicates)
+RUN pip install --no-cache-dir -r requirements-api.txt
+
+# Clean up to reduce size
+RUN SITE=/usr/local/lib/python3.11/site-packages && \
+    find $SITE -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "tests"       -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -type d -name "test"        -exec rm -rf {} + 2>/dev/null || true && \
+    find $SITE -name "*.pyc"  -delete 2>/dev/null || true && \
+    find $SITE -name "*.pyo"  -delete 2>/dev/null || true && \
+    find $SITE -name "*.c"    -delete 2>/dev/null || true && \
+    find $SITE -name "*.h"    -delete 2>/dev/null || true && \
+    find $SITE -name "*.so" -exec strip --strip-unneeded {} + 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/RECORD"  -delete 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/WHEEL"   -delete 2>/dev/null || true && \
+    find $SITE -path "*.dist-info/LICENSE*" -delete 2>/dev/null || true && \
+    pip uninstall -y pip setuptools wheel 2>/dev/null || true
+
+# ============================================================
+# Stage 2: Runtime (Ultra-minimal)
+# ============================================================
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Copy Python packages from builder (default site-packages, not /install)
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin/uvicorn  /usr/local/bin/uvicorn
+COPY --from=builder /usr/local/bin/celery   /usr/local/bin/celery
+
+# Copy ONLY API code (no ML worker code)
+COPY app/ ./app/
+
+# Create minimal directories
+RUN mkdir -p /app/logs
+
+# No data or models in API container - use volumes or remote storage
+# Models loaded by worker only
+
+EXPOSE 8000
+
+# Lightweight health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')" || exit 1
+
+# Run API with uvicorn (single worker - scale horizontally with orchestrator)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

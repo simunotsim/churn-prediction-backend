@@ -1,6 +1,6 @@
 # ============================================================================
-# Production Dependencies for Churn Prediction API
-# Pinned versions for reproducible builds
+# API-only Dependencies (Lightweight Container)
+# For the FastAPI backend - NO ML training libraries
 # ============================================================================
 
 # FastAPI Framework
@@ -23,25 +23,12 @@ bcrypt==4.2.0
 sqlalchemy==2.0.35
 pymysql==1.1.1
 
-# Data Processing
-pandas==2.2.3
-numpy==1.26.4
-
-# Machine Learning
-scikit-learn==1.5.2
-xgboost==2.1.1
-joblib==1.4.2
+# Async Task Queue (Client only)
+celery==5.4.0
+redis==5.1.1
 
 # HTTP Client
 requests==2.32.3
 
-# Async Task Queue
-celery==5.4.0
-redis==5.1.1
-
-# Production Server
-gunicorn==23.0.0
-
-# Monitoring & Logging (optional but recommended)
-# prometheus-client==0.21.0
-# sentry-sdk[fastapi]==2.15.0
+# Logging (lightweight)
+python-json-logger==2.0.7

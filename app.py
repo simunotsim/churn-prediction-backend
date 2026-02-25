@@ -1,45 +1,38 @@
-from flask import Flask
-from src.data.loaders import load_data
-from src.data.preprocess import preprocess_data
-from src.features.build_features import create_features
-from src.models.train import train_model
-from src.models.predict import make_predictions
-from src.models.evaluation import evaluate_model
-from src.retention.recommendations import generate_recommendations
+"""
+FastAPI Backend Entry Point
+This file redirects to the main API implementation in api/main.py
+For actual API endpoints and functionality, see backend/api/main.py
+"""
 
-app = Flask(__name__)
+from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
+import uvicorn
 
-@app.route('/')
-def home():
-    return "Welcome to the Customer Churn Prediction and Retention Analytics System!"
+# Create a simple FastAPI app that redirects to the main API
+app = FastAPI(
+    title="Churn Prediction Backend",
+    description="Customer Churn Prediction and Retention Analytics System",
+    version="2.0.0"
+)
 
-@app.route('/run')
-def run_analysis():
-    # Load data
-    raw_data = load_data()
-    
-    # Preprocess data
-    processed_data = preprocess_data(raw_data)
-    
-    # Create features
-    features = create_features(processed_data)
-    
-    # Train model
-    model = train_model(features)
-    
-    # Make predictions
-    predictions = make_predictions(model, features)
-    
-    # Evaluate model
-    evaluation_results = evaluate_model(predictions, features)
-    
-    # Generate recommendations
-    recommendations = generate_recommendations(predictions)
-    
+@app.get("/")
+async def root():
+    """Redirect to API documentation"""
+    return RedirectResponse(url="/docs")
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
     return {
-        "evaluation": evaluation_results,
-        "recommendations": recommendations
+        "status": "healthy",
+        "message": "Churn Prediction API is running",
+        "note": "Main API is located at backend/api/main.py"
     }
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    print("=" * 60)
+    print("⚠️  NOTE: This is a simplified entry point.")
+    print("⚠️  The main API with all features is in: backend/api/main.py")
+    print("⚠️  Run the API with: cd api && python main.py")
+    print("=" * 60)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

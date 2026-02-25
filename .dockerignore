@@ -1,0 +1,162 @@
+# ============================================================================
+# .dockerignore - Exclude files from Docker build context
+# Reduces image size and build time significantly
+# ============================================================================
+
+# Python bytecode and cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.code-workspace
+
+# Jupyter notebooks (large and not needed in production)
+*.ipynb
+.ipynb_checkpoints/
+notebooks/
+
+# Data files (large datasets - mount as volumes instead)
+data/
+data/raw/
+data/processed/
+data/temp/
+*.csv
+*.xlsx
+*.xls
+*.parquet
+
+# Model files (mount as volume instead to avoid rebuild on model update)
+# Comment if you want models baked into image
+models/*.pkl
+models/*.joblib
+models/*.h5
+models/*.pt
+
+# Documentation
+*.md
+!README.md
+docs/
+ARCHITECTURE.md
+
+# Test files
+tests/
+test/
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+*.cover
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+temp/
+
+# Environment files (secrets should NOT be in image)
+.env
+.env.*
+!.env.example
+
+# Docker files (not needed inside image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD files
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Package management
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Old/backup files
+*.bak
+*.old
+*.orig
+backup/
+
+# Media files
+*.mp4
+*.avi
+*.mov
+*.mp3
+
+# Archives
+*.tar
+*.tar.gz
+*.zip
+*.rar
+
+# OS specific
+Thumbs.db
+.DS_Store
+
+# Frontend (if in same repo)
+frontend/
+node_modules/
+
+# Postman collections
+postman/
+
+# Old application structure (after migration to new architecture)
+# These are replaced by app/ directory
+api/
+auth/
+config/
+database/
+features/
+retention/
+utils/
+app.py
+
+# ============================================================================
+# What gets included in Docker image:
+# - app/ (new production architecture)
+# - worker/ (Celery worker)
+# - requirements.txt (dependencies)
+# Volumes: /app/data, /app/models, /app/logs
+# ============================================================================

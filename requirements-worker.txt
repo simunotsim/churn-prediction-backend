@@ -1,0 +1,30 @@
+# ============================================================================
+# ML Worker Dependencies (Heavy Container)
+# For Celery worker - inference and ML operations only
+# ============================================================================
+
+# Include API dependencies (worker needs Celery, DB access)
+-r requirements-api.txt
+
+# Data Processing (for inference)
+pandas==2.2.3
+numpy==1.26.4
+
+# Machine Learning (INFERENCE ONLY - no training)
+xgboost==2.1.1
+joblib==1.4.2
+
+# Feature preprocessing might need minimal sklearn
+# Only include if you use StandardScaler, LabelEncoder, etc.
+scikit-learn==1.5.2
+
+# Explainability (only if used in production predictions)
+# Comment out if SHAP is only used during offline analysis
+# shap==0.45.0
+
+# Remove these if not needed for inference:
+# matplotlib - NOT needed in production
+# seaborn - NOT needed in production
+# jupyter - NOT needed in production
+# ipykernel - NOT needed in production
+# plotly - NOT needed unless generating plots in API
