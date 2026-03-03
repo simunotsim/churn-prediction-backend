@@ -16,7 +16,14 @@ from fastapi.responses import JSONResponse
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging, get_logger
 from app.database.session import init_db, close_db
-from app.ml.model_loader import get_model_loader
+
+# Conditionally import ML modules (only available in worker container)
+try:
+    from app.ml.model_loader import get_model_loader
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    get_model_loader = None
 
 # Import routers
 from app.routers import auth, dataset, comparison, prediction, health
@@ -54,14 +61,17 @@ async def lifespan(app: FastAPI):
         if settings.ENV == "production":
             raise
 
-    # Preload ML models (loaded once at startup per spec)
-    try:
-        model_loader = get_model_loader()
-        model_loader.load_artifacts()
-        logger.info("ML models preloaded successfully")
-    except Exception as e:
-        logger.warning(f"ML model preloading failed: {e}")
-        logger.warning("Models will be loaded on first request")
+    # Preload ML models (only if ML libraries available - worker container)
+    if ML_AVAILABLE and get_model_loader is not None:
+        try:
+            model_loader = get_model_loader()
+            model_loader.load_artifacts()
+            logger.info("ML models preloaded successfully")
+        except Exception as e:
+            logger.warning(f"ML model preloading failed: {e}")
+            logger.warning("Models will be loaded on first request")
+    else:
+        logger.info("ML libraries not available - API-only mode (ML delegated to worker)")
 
     logger.info("Application startup complete")
 

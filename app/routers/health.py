@@ -11,9 +11,16 @@ from sqlalchemy import text
 from datetime import datetime
 
 from app.database.session import get_db
-from app.ml.model_loader import get_model_loader
 from app.core.config import get_settings
 from app.core.logging_config import get_logger
+
+# Conditionally import ML modules (only available in worker container)
+try:
+    from app.ml.model_loader import get_model_loader
+    ML_AVAILABLE = True
+except ImportError:
+    ML_AVAILABLE = False
+    get_model_loader = None
 
 settings = get_settings()
 logger = get_logger(__name__)
@@ -57,15 +64,21 @@ async def readiness_check(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
 
-    # Check ML models
-    try:
-        model_loader = get_model_loader()
-        if model_loader.is_loaded() or model_loader.load_artifacts():
-            checks["ml_models"] = True
-    except Exception as e:
-        logger.error(f"ML models health check failed: {e}")
+    # Check ML models (only if ML libraries available - worker container)
+    if ML_AVAILABLE and get_model_loader is not None:
+        try:
+            model_loader = get_model_loader()
+            if model_loader.is_loaded() or model_loader.load_artifacts():
+                checks["ml_models"] = True
+        except Exception as e:
+            logger.error(f"ML models health check failed: {e}")
+    else:
+        # API-only mode - ML is delegated to worker, mark as N/A
+        checks["ml_models"] = "delegated_to_worker"
 
-    all_healthy = all(checks.values())
+    # Adjust health check for API-only mode
+    required_checks = {k: v for k, v in checks.items() if v is not True and v != "delegated_to_worker"}
+    all_healthy = len(required_checks) == 0 or all(v is True for v in checks.values() if isinstance(v, bool))
 
     return {
         "status": "ready" if all_healthy else "not_ready",

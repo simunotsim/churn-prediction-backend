@@ -101,6 +101,16 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
     return auth_service.authenticate_user(login_data)
 
 
+@router.post("/login-json", response_model=Token)
+async def login_json(login_data: UserLogin, db: Session = Depends(get_db)):
+    """
+    POST /auth/login-json (alias for /login)
+    Response: {"access_token": "", "token_type": "bearer"}
+    """
+    auth_service = AuthService(db)
+    return auth_service.authenticate_user(login_data)
+
+
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),

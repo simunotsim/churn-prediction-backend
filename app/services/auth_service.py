@@ -57,6 +57,8 @@ class AuthService:
                 email=user_data.email,
                 username=user_data.username,
                 hashed_password=hashed_pw,
+                full_name=user_data.full_name,
+                company=user_data.company,
             )
             logger.info(f"New user registered: {user_data.email}")
             return RegisterResponse(message="User created")

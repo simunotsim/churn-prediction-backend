@@ -19,29 +19,28 @@ class Dataset(Base):
 
     # Dataset metadata
     filename = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
 
     # Dataset statistics
     total_customers = Column(Integer, default=0)
+    total_revenue = Column(Float, default=0.0)
 
     # Churn analysis results
     churn_rate = Column(Float, default=0.0)
     revenue_at_risk = Column(Float, default=0.0)
-
-    # Processing status: processing / completed / failed
-    status = Column(String(50), default="processing")
-
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    # Extended fields (kept for richer analytics)
-    total_revenue = Column(Float, default=0.0)
     predicted_churners = Column(Integer, default=0)
     high_risk_count = Column(Integer, default=0)
     critical_risk_count = Column(Integer, default=0)
     segment_stats = Column(JSON, nullable=True)
+    predictions_summary = Column(JSON, nullable=True)
+
+    # Processing status: processing / completed / failed
+    status = Column(String(50), default="processing")
     error_message = Column(Text, nullable=True)
+
+    # Timestamps
+    upload_date = Column(DateTime, default=datetime.utcnow)
     processed_date = Column(DateTime, nullable=True)
-    description = Column(Text, nullable=True)
 
     # Relationships
     owner = relationship("User", back_populates="datasets")

@@ -48,7 +48,7 @@ class ComparisonRepository:
         return (
             db.query(Comparison)
             .filter(Comparison.user_id == user_id)
-            .order_by(Comparison.created_at.desc())
+            .order_by(Comparison.comparison_date.desc())
             .limit(limit)
             .all()
         )

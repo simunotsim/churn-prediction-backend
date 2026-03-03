@@ -1,8 +1,10 @@
 """
 Security utilities: password hashing (bcrypt) and JWT token management
 Production-ready authentication with proper password hashing
+Supports legacy SHA-256 salt$hash passwords from the original schema
 """
 
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -34,19 +36,38 @@ def hash_password(password: str, salt: Optional[str] = None) -> str:
     return pwd_context.hash(password)
 
 
+def _verify_legacy_sha256(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify password against legacy salt$sha256hash format
+    used by the original auth/utils.py schema.
+    """
+    parts = hashed_password.split("$")
+    if len(parts) != 2:
+        return False
+    salt, stored_hash = parts
+    salted = f"{salt}${plain_password}"
+    computed = hashlib.sha256(salted.encode()).hexdigest()
+    return computed == stored_hash
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
-    Verify a password against its bcrypt hash
+    Verify a password against its hash.
+    Supports both bcrypt ($2b$...) and legacy SHA-256 (salt$hash) formats.
 
     Args:
         plain_password: Plain text password to verify
-        hashed_password: Stored bcrypt hash
+        hashed_password: Stored hash (bcrypt or legacy SHA-256)
 
     Returns:
         True if password matches, False otherwise
     """
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        # Bcrypt hashes always start with $2b$ (or $2a$, $2y$)
+        if hashed_password.startswith(("$2b$", "$2a$", "$2y$")):
+            return pwd_context.verify(plain_password, hashed_password)
+        # Otherwise try legacy SHA-256 salt$hash format
+        return _verify_legacy_sha256(plain_password, hashed_password)
     except Exception:
         return False
 

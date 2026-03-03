@@ -33,6 +33,8 @@ class UserRegister(BaseModel):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=100)
     password: str = Field(..., min_length=8, max_length=100)
+    full_name: Optional[str] = None
+    company: Optional[str] = None
 
     @validator("password")
     def validate_password(cls, v):

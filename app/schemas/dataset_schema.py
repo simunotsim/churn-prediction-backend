@@ -48,7 +48,7 @@ class DatasetResponse(BaseModel):
     """Full dataset response with analysis results"""
     id: int
     filename: str
-    created_at: datetime
+    upload_date: datetime
     processed_date: Optional[datetime] = None
     description: Optional[str] = None
 
@@ -78,7 +78,7 @@ class DatasetSummary(BaseModel):
     """Brief dataset summary for list view"""
     id: int
     filename: str
-    created_at: datetime
+    upload_date: datetime
     total_customers: int
     churn_rate: float
     revenue_at_risk: float

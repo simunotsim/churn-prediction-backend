@@ -31,12 +31,21 @@ class UserRepository:
         return db.query(User).filter(User.username == username).first()
 
     @staticmethod
-    def create(db: Session, email: str, username: str, hashed_password: str) -> User:
+    def create(
+        db: Session,
+        email: str,
+        username: str,
+        hashed_password: str,
+        full_name: Optional[str] = None,
+        company: Optional[str] = None,
+    ) -> User:
         """Create a new user"""
         db_user = User(
             email=email,
             username=username,
             hashed_password=hashed_password,
+            full_name=full_name,
+            company=company,
         )
         db.add(db_user)
         db.commit()

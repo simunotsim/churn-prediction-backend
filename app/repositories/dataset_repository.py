@@ -26,7 +26,7 @@ class DatasetRepository:
         return (
             db.query(Dataset)
             .filter(Dataset.user_id == user_id)
-            .order_by(Dataset.created_at.desc())
+            .order_by(Dataset.upload_date.desc())
             .offset(skip)
             .limit(limit)
             .all()
@@ -117,7 +117,7 @@ class DatasetRepository:
         return (
             db.query(Dataset)
             .filter(Dataset.status == status)
-            .order_by(Dataset.created_at.asc())
+            .order_by(Dataset.upload_date.asc())
             .limit(limit)
             .all()
         )

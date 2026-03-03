@@ -19,6 +19,10 @@ class User(Base):
     username = Column(String(100), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
 
+    # Profile
+    full_name = Column(String(255), nullable=True)
+    company = Column(String(255), nullable=True)
+
     # Status
     is_active = Column(Boolean, default=True)
 
@@ -28,6 +32,7 @@ class User(Base):
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
+    last_login = Column(DateTime, nullable=True)
 
     # Relationships
     datasets = relationship("Dataset", back_populates="owner", cascade="all, delete-orphan")
