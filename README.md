@@ -2,6 +2,16 @@
 
 FastAPI backend for customer churn prediction with user authentication, dynamic dataset analysis, and retention strategies.
 
+## 🌐 Live Deployment (AWS ECS — ap-south-2 Hyderabad)
+
+| Service | URL |
+|---------|-----|
+| **API Base** | http://churn-prediction-alb-1924366152.ap-south-2.elb.amazonaws.com/api |
+| **Swagger UI (Docs)** | http://churn-prediction-alb-1924366152.ap-south-2.elb.amazonaws.com/docs |
+| **ReDoc** | http://churn-prediction-alb-1924366152.ap-south-2.elb.amazonaws.com/redoc |
+
+> Deployed on **Amazon ECS Fargate** (`churn-prediction-cluster`) behind an Application Load Balancer, with **Amazon RDS MySQL** as the database and **Amazon S3** (`churn-prediction-models-26df5b8b`) for model storage.
+
 ## ✨ Key Features
 
 - 🔐 **User Authentication** - JWT-based registration & login
